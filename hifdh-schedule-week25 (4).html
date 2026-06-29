@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en" style="color-scheme: light only;">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light only" />
+<meta name="theme-color" content="#f4e8d2" />
+<meta name="supported-color-schemes" content="light" />
+<title>Hifdh Schedule</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --gold: #c9952c;
+    --gold-dark: #b27f1f;
+    --cream: #f4e8d2;
+    --cell-bg: #fbede2;
+    --ink: #5a2e1d;
+    --ink-soft: #7a4a32;
+    --border: #b9842a;
+    --done-bg: #d9d2c4;
+  }
+
+  *{ box-sizing: border-box; forced-color-adjust: none; }
+
+  html{
+    color-scheme: light only;
+    background: #f4e8d2;
+  }
+
+  @media (prefers-color-scheme: dark){
+    html, body{
+      background: #f4e8d2 !important;
+      color: #5a2e1d !important;
+    }
+  }
+
+  body{
+    margin:0;
+    color-scheme: light only;
+    padding: 24px 12px 48px;
+    background: var(--cream);
+    font-family: "Segoe UI", Tahoma, "Geeza Pro", Arial, sans-serif;
+    color: var(--ink);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  .table-wrap{
+    width:100%;
+    max-width: 1100px;
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(90,46,29,0.18);
+    border: 4px solid var(--gold-dark);
+    box-sizing: border-box;
+  }
+
+  table.schedule{
+    border-collapse: collapse;
+    width:100%;
+    min-width: 1092px;
+    background: var(--cell-bg);
+    table-layout: fixed;
+  }
+
+  table.schedule th,
+  table.schedule td{
+    border: 1.5px solid var(--border);
+    padding: 10px 12px;
+    text-align:center;
+    vertical-align:middle;
+  }
+
+  thead th{
+    background: var(--gold);
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+
+  th.vert-head{
+    display: none;
+  }
+
+  td.vert-cell{
+    display: none;
+  }
+
+  table.schedule th:nth-child(1),
+  table.schedule td:nth-child(1) {
+    width: 84px;
+  }
+
+  table.schedule th:nth-child(2),
+  table.schedule td:nth-child(2),
+  table.schedule th:nth-child(3),
+  table.schedule td:nth-child(3),
+  table.schedule th:nth-child(4),
+  table.schedule td:nth-child(4) {
+    width: 190px;
+  }
+
+  table.schedule th:nth-child(5),
+  table.schedule td:nth-child(5) {
+    width: 360px;
+  }
+
+  td.day-cell{
+    background: var(--gold);
+    color: var(--ink);
+    font-weight: 800;
+    font-size: 17px;
+    white-space: pre-wrap;
+    padding: 10px 6px;
+  }
+
+  td.data-cell{
+    background: var(--cell-bg);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  td.task-cell{
+    cursor: pointer;
+    position: relative;
+  }
+
+  .sat-merged-check{
+    position: absolute;
+    top: 6px;
+    left: 6px;
+  }
+
+  td.task-cell.completed{
+    background: var(--done-bg);
+  }
+
+  td.task-cell.blocked{
+    background: rgba(200, 60, 60, 0.12);
+  }
+
+  td.task-cell.blocked .cell-inner,
+  td.task-cell.blocked .line-main,
+  td.task-cell.blocked .line-sub{
+    text-decoration: line-through;
+    text-decoration-color: #c44;
+    color: #c44;
+  }
+
+  .cell-inner{
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    text-align: center;
+  }
+
+  td.task-cell.completed .cell-inner,
+  td.task-cell.completed .line-main,
+  td.task-cell.completed .line-sub{
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-soft);
+    opacity: 0.5;
+  }
+
+  .line-main{
+    font-size: 19px;
+    font-weight: 800;
+    line-height:1.25;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    text-align: center;
+  }
+
+  .line-sub{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    line-height:1.2;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: text;
+    text-align: center;
+  }
+
+  td.vert-cell{
+    background: var(--cell-bg);
+    width: 46px;
+    padding: 6px 4px;
+  }
+
+  .vert-text{
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-weight: 800;
+    font-size: 14px;
+    line-height:1.35;
+    margin: 0 auto;
+    letter-spacing: 0.3px;
+    white-space: pre-wrap;
+  }
+
+  tr.sat-row td.day-cell{
+    background: var(--gold);
+  }
+
+  tr.today-row td{
+    border-top: 6px solid var(--gold-dark) !important;
+    border-bottom: 6px solid var(--gold-dark) !important;
+  }
+
+  tr.today-row{
+    filter: drop-shadow(0 0 6px rgba(178,127,31,0.5));
+  }
+
+  /* Personal tasks: border only around the full day block */
+  tr.today-top td{
+    border-top: 6px solid var(--gold-dark) !important;
+  }
+
+  tr.today-bottom td{
+    border-bottom: 6px solid var(--gold-dark) !important;
+  }
+
+  tr.today-after td{
+    border-top: 6px solid var(--gold-dark) !important;
+  }
+
+  tr.today-side{
+    filter: drop-shadow(0 0 6px rgba(178,127,31,0.4));
+  }
+
+  td.sat-merged{
+    font-size: 30px;
+    font-weight: 800;
+  }
+
+  td.sat-merged .cell-inner,
+  td.sat-merged .cell-inner *{
+    font-size: 30px !important;
+    font-weight: 800 !important;
+    font-family: inherit !important;
+    color: inherit !important;
+    background: transparent !important;
+  }
+
+  [contenteditable="true"]{
+    border-radius: 4px;
+    transition: background 0.15s ease, outline 0.15s ease;
+    outline: none;
+  }
+
+  [contenteditable="true"]:hover{
+    background: rgba(255,255,255,0.35);
+  }
+
+  [contenteditable="true"]:focus{
+    background: #ffffff;
+    outline: 2px dashed var(--gold-dark);
+  }
+
+  .hint{
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    opacity: 0.85;
+    text-align:center;
+  }
+
+  .hint.saved{
+    color: #3f7d3f;
+  }
+
+  .reset-row{
+    margin-top: 12px;
+  }
+
+  .reset-btn{
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .reset-btn:hover{
+    background: var(--done-bg);
+    color: var(--ink);
+  }
+
+  .personal-tasks{
+    width: 100%;
+    max-width: 1100px;
+    margin-top: 26px;
+  }
+
+  .pt-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 10px;
+  }
+
+  .pt-header h2{
+    font-size: 15px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  .add-task-btn{
+    background: var(--gold);
+    color: var(--ink);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .add-task-btn:hover{
+    background: var(--gold-dark);
+    color: #fff;
+  }
+
+  .pt-table-wrap{
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(90,46,29,0.12);
+    border: 4px solid var(--gold-dark);
+  }
+
+  table.personal-table{
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+    background: var(--cell-bg);
+    table-layout: fixed;
+  }
+
+  table.personal-table th,
+  table.personal-table td{
+    border: 1.5px solid var(--border);
+    padding: 10px 12px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  table.personal-table td:first-child{
+    padding: 10px 6px;
+  }
+
+  table.personal-table thead th{
+    background: var(--gold);
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    position: relative;
+  }
+
+  table.personal-table th.day-col{ width: 84px; }
+  table.personal-table th.name-col{ width: 230px; }
+
+  .prep-cell{
+    padding: 0 !important;
+  }
+
+  .prep-cell.single-line-completed,
+  .name-group-cell.single-line-completed{
+    background: var(--done-bg);
+  }
+
+  .prep-cell.single-line-completed .prep-line-wrap{
+    background: transparent;
+  }
+
+  .name-group-cell{
+    padding: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    border-left: 1px solid var(--border) !important;
+  }
+
+  td.prep-cell[data-pday]{
+    border-left: 1px solid var(--border) !important;
+  }
+
+  table.personal-table td.day-cell{
+    border-right: 1px solid var(--border) !important;
+  }
+
+  .name-group-wrap{
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    min-height: 38px;
+  }
+
+  .name-group-text{
+    flex: 1;
+    padding: 7px 10px;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .name-group-text:focus{
+    background: rgba(255,255,255,0.6);
+  }
+
+  .name-group-cell .prep-line-btns{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding: 2px 4px 2px 0;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .name-group-cell:hover .prep-line-btns{
+    opacity: 1;
+  }
+
+  .prep-line-wrap{
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    border-bottom: 1px solid rgba(185,132,42,0.25);
+    position: relative;
+    padding-left: 6px;
+    min-height: 38px;
+  }
+
+  .prep-line-wrap .line-check-btn{
+    align-self: center;
+  }
+
+  .prep-line-wrap .prep-line{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .prep-line-wrap .prep-line-btns{
+    align-self: center;
+  }
+
+  .line-check-btn{
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .line-check-btn.checked{
+    background: var(--gold-dark);
+    border-color: var(--gold-dark);
+  }
+
+  .line-check-btn.blocked{
+    background: #c44;
+    border-color: #c44;
+    color: #fff;
+  }
+
+  .prep-line-wrap:last-child{
+    border-bottom: none;
+  }
+
+  .prep-line-wrap:hover .prep-line-btns{
+    opacity: 1;
+  }
+
+  .prep-line-btns{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding: 2px 4px 2px 0;
+    flex-shrink: 0;
+  }
+
+  .prep-add-btn,
+  .prep-remove-btn,
+  .sat-prep-add-btn,
+  .sat-prep-remove-btn{
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    line-height: 1;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-family: inherit;
+  }
+
+  .prep-add-btn:hover,
+  .sat-prep-add-btn:hover{
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  .prep-remove-btn:hover,
+  .sat-prep-remove-btn:hover{
+    background: #c44;
+    color: #fff;
+    border-color: #c44;
+  }
+
+  .prep-line{
+    flex: 1;
+    padding: 7px 12px;
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .prep-line:hover{
+    background: rgba(255,255,255,0.35);
+  }
+
+  .prep-line-wrap.completed{
+    background: var(--done-bg);
+  }
+
+  .prep-line-wrap.completed .prep-line{
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-soft);
+    opacity: 0.5;
+  }
+
+  .prep-line-wrap.blocked{
+    background: rgba(200, 60, 60, 0.12);
+  }
+
+  .prep-line-wrap.blocked .prep-line{
+    color: #c44;
+    text-decoration: line-through;
+    text-decoration-color: #c44;
+  }
+
+  .prep-cell.single-line-blocked,
+  .name-group-cell.single-line-blocked{
+    background: rgba(200, 60, 60, 0.12);
+  }
+
+  .prep-line.completed{
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-soft);
+    opacity: 0.5;
+  }
+
+  .prep-line.blocked{
+    color: #c44;
+    text-decoration: line-through;
+    text-decoration-color: #c44;
+  }
+
+  .prep-line[contenteditable="true"]:focus{
+    background: rgba(255,255,255,0.6);
+    outline: none;
+  }
+
+  .hint{
+    font-size: 13px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    padding: 10px;
+  }
+
+  .week-title{
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 14px;
+    text-align: center;
+  }
+
+  .footer-note{
+    max-width: 640px;
+    margin: 22px auto 0;
+    padding: 14px 18px;
+    background: var(--cell-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+  <h1 class="week-title">Week of Sunday, June 21 – Saturday, June 27, 2026</h1>
+
+  <div class="table-wrap">
+    <div id="app"></div>
+  </div>
+  <p class="hint" id="hint">Tap to edit, Enter for a new line · tap the circle to mark it done</p>
+  <div class="reset-row">
+    <button id="resetBtn" class="reset-btn">Reset Completed Tasks</button>
+  </div>
+
+  <p class="footer-note" id="footerNote" style="display:none;">📖 Reminder: read tomorrow's hifdh</p>
+
+
+  <div class="personal-tasks">
+    <div class="pt-header">
+      <h2>Personal Tasks</h2>
+    </div>
+    <div class="pt-table-wrap">
+      <table class="personal-table">
+        <thead>
+          <tr>
+            <th class="day-col" data-clear-field="day" title="Double-click to clear this column">Day</th>
+            <th class="name-col" data-clear-field="name" title="Double-click to clear this column">Task Name</th>
+            <th data-clear-field="text" title="Double-click to clear this column">Task</th>
+          </tr>
+        </thead>
+        <tbody id="personalTaskList"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyDpt5VlHs5k0N4zH2T86m2sjsfcQlMoSfc",
+    authDomain: "hifdh-schedule.firebaseapp.com",
+    projectId: "hifdh-schedule",
+    storageBucket: "hifdh-schedule.firebasestorage.app",
+    messagingSenderId: "413778085253",
+    appId: "1:413778085253:web:d4a1017ad4fd44341f30ec"
+  });
+  const db = firebase.firestore();
+
+  const STORAGE_KEY = "fajr-hifdh-k7x2m9p4q8w3n6j1";
+
+  let isSaving = false;
+
+  async function storageSet(key, value){
+    try {
+      await db.collection("schedules").doc(key).set({ value });
+      return { value };
+    } catch (e) { console.error("Firestore set error", e); return null; }
+  }
+
+  function emptyChecks(){
+    return { distant: [], recent: [], newly: [], prep: [] };
+  }
+
+  const defaultState = {
+    headers: [
+      "The Day",
+      "The distant past",
+      "The recent past",
+      "The newly memorized recite",
+      "",
+      "Weekly preparation only reading"
+    ],
+    vertical: "Pray by the memorized Aayat throughout the day in both obligatory and voluntary prayers",
+    rows: [
+      { day: "Sun", distant: "البقرة", recent: "المائدة +\ntimes 2 ← 137 : 132 الأنعام", newly: "الأعراف 1 : 170", prep: "التوبة", completed: emptyChecks() },
+      { day: "Mon", distant: "ال عمران", recent: "الأنعام +\ntimes 2 ← 137 : 125 الأنعام", newly: "الأعراف 1 : 178", prep: "التوبة", completed: emptyChecks() },
+      { day: "Tue", distant: "النساء", recent: "المائدة +\ntimes 2 ← 137 : 119 الأنعام", newly: "الأعراف 1 : 187", prep: "التوبة", completed: emptyChecks() },
+      { day: "Wed", distant: "البقرة", recent: "الأنعام +\ntimes 2 ← 137 : 111 الأنعام", newly: "الأعراف 1 : 195", prep: "التوبة", completed: emptyChecks() },
+      { day: "Thu", distant: "ال عمران", recent: "المائدة +\ntimes 2 ← 137 : 111 الأنعام", newly: "الأعراف", prep: "التوبة", completed: emptyChecks() },
+      { day: "Fri", distant: "النساء", recent: "الأنعام +\ntimes 2 ← 137 : 111 الأنعام", newly: "الأعراف\n3 times", prep: "التوبة", completed: emptyChecks() }
+    ],
+    satDay: "Sat",
+    satMerged: "times 5 ← الأعراف",
+    satCompleted: false,
+    satName: "The name :",
+    satNameCompleted: [],
+    personalDays: [
+      { day: "Sun", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Mon", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Tue", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Wed", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Thu", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Fri", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] },
+      { day: "Sat", groups: [{ name: "", tasks: [{ text: "", completed: false }] }] }
+    ]
+  };
+
+  let state = JSON.parse(JSON.stringify(defaultState));
+  const app = document.getElementById("app");
+  const hint = document.getElementById("hint");
+
+  function esc(str){
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function escMultiline(str){
+    return esc(str).replace(/\n/g, "<br>");
+  }
+
+  function getPath(obj, path){
+    return path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
+  }
+
+  function setPath(obj, path, value){
+    const parts = path.split(".");
+    let cur = obj;
+    for (let i = 0; i < parts.length - 1; i++) cur = cur[parts[i]];
+    cur[parts[parts.length - 1]] = value;
+  }
+
+  function singleTaskCell(textPath, text, completedPath, completed){
+    return `
+      <td class="data-cell task-cell${completed ? " completed" : ""}" data-completed-path="${completedPath}">
+        <div class="cell-inner" data-path="${textPath}" contenteditable="true">${escMultiline(text)}</div>
+      </td>`;
+  }
+
+  function twoLineTaskCell(mainPath, mainText, subPath, subText, completedPath, completed){
+    return `
+      <td class="data-cell task-cell${completed ? " completed" : ""}" data-completed-path="${completedPath}">
+        <div class="line-main" data-path="${mainPath}" contenteditable="true">${escMultiline(mainText)}</div>
+        <div class="line-sub" data-path="${subPath}" contenteditable="true">${escMultiline(subText)}</div>
+      </td>`;
+  }
+
+  function tickState(val){
+    if (val === "no") return { wrapClass: " blocked", btnClass: " blocked", label: "✕", ariaPressed: "mixed" };
+    if (val)          return { wrapClass: " completed", btnClass: " checked", label: "✓", ariaPressed: "true" };
+    return             { wrapClass: "", btnClass: "", label: "", ariaPressed: "false" };
+  }
+
+  function nextTick(val){
+    if (!val) return true;
+    if (val === true) return "no";
+    return false;
+  }
+
+  function multiLineCell(rowIndex, field, text, completedArr){
+    const lines = (text || "").split("\n");
+    const linesHtml = lines.map((line, li) => {
+      const val = completedArr ? completedArr[li] : false;
+      const s = tickState(val);
+      return `
+        <div class="prep-line-wrap${s.wrapClass}">
+          <button class="line-check-btn${s.btnClass}" data-row="${rowIndex}" data-field="${field}" data-line="${li}" aria-pressed="${s.ariaPressed}" title="Mark complete">${s.label}</button>
+          <div class="prep-line${s.wrapClass ? s.wrapClass : ""}" data-row="${rowIndex}" data-field="${field}" data-line="${li}" contenteditable="true">${esc(line)}</div>
+          <div class="prep-line-btns">
+            <button class="prep-add-btn" data-row="${rowIndex}" data-field="${field}" data-line="${li}" title="Add line below">+</button>
+            <button class="prep-remove-btn" data-row="${rowIndex}" data-field="${field}" data-line="${li}" title="Remove line">×</button>
+          </div>
+        </div>`;
+    }).join("");
+    const allDone = lines.length >= 1 && completedArr && lines.every((_, idx) => completedArr[idx] === true);
+    const allBlocked = lines.length >= 1 && completedArr && lines.every((_, idx) => completedArr[idx] === "no");
+    const cellClass = lines.length <= 2 && allDone ? " single-line-completed" : lines.length <= 2 && allBlocked ? " single-line-blocked" : "";
+    return `<td class="data-cell prep-cell${cellClass}" data-row="${rowIndex}" data-field="${field}">${linesHtml}</td>`;
+  }
+
+  function satPrepCell(text, completedArr){
+    const lines = (text || "").split("\n");
+    const linesHtml = lines.map((line, li) => {
+      const val = completedArr ? completedArr[li] : false;
+      const s = tickState(val);
+      return `
+        <div class="prep-line-wrap${s.wrapClass}">
+          <button class="line-check-btn${s.btnClass}" data-satline="${li}" aria-pressed="${s.ariaPressed}" title="Mark complete">${s.label}</button>
+          <div class="prep-line${s.wrapClass ? s.wrapClass : ""}" data-satline="${li}" contenteditable="true">${esc(line)}</div>
+          <div class="prep-line-btns">
+            <button class="sat-prep-add-btn" data-satline="${li}" title="Add line below">+</button>
+            <button class="sat-prep-remove-btn" data-satline="${li}" title="Remove line">×</button>
+          </div>
+        </div>`;
+    }).join("");
+    const allDone = lines.length >= 1 && completedArr && lines.every((_, idx) => completedArr[idx] === true);
+    const allBlocked = lines.length >= 1 && completedArr && lines.every((_, idx) => completedArr[idx] === "no");
+    const cellClass = lines.length <= 2 && allDone ? " single-line-completed" : lines.length <= 2 && allBlocked ? " single-line-blocked" : "";
+    return `<td class="data-cell prep-cell sat-prep-cell${cellClass}">${linesHtml}</td>`;
+  }
+
+  function render(){
+    app.innerHTML = `
+      <table class="schedule">
+        <thead>
+          <tr>
+            <th data-path="headers.0" data-clear-field="day" title="Double-click to clear this column" contenteditable="true">${escMultiline(state.headers[0])}</th>
+            <th data-path="headers.1" data-clear-field="distant" title="Double-click to clear this column" contenteditable="true">${escMultiline(state.headers[1])}</th>
+            <th data-path="headers.2" data-clear-field="recent" title="Double-click to clear this column" contenteditable="true">${escMultiline(state.headers[2])}</th>
+            <th data-path="headers.3" data-clear-field="newly" title="Double-click to clear this column" contenteditable="true">${escMultiline(state.headers[3])}</th>
+            <th data-path="headers.5" data-clear-field="prep" title="Double-click to clear this column" contenteditable="true">${escMultiline(state.headers[5])}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.rows.map((r, i) => {
+            const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri"];
+            const todayName = dayNames[new Date().getDay()];
+            const isToday = r.day.trim() === todayName;
+            return `
+          <tr${isToday ? ' class="today-row"' : ''}>
+            <td class="day-cell" data-path="rows.${i}.day" contenteditable="true">${escMultiline(r.day)}</td>
+            ${multiLineCell(i, "distant", r.distant, r.completed.distant)}
+            ${multiLineCell(i, "recent", r.recent, r.completed.recent)}
+            ${multiLineCell(i, "newly", r.newly, r.completed.newly)}
+            ${multiLineCell(i, "prep", r.prep, r.completed.prep)}
+          </tr>`;
+          }).join("")}
+          <tr class="sat-row${new Date().getDay() === 6 ? ' today-row' : ''}">
+            <td class="day-cell" data-path="satDay" contenteditable="true">${escMultiline(state.satDay)}</td>
+            <td class="sat-merged data-cell task-cell${(() => { const s = tickState(state.satCompleted); return s.wrapClass; })()} ${state.satCompleted === 'no' ? 'blocked' : ''}" colspan="3" data-completed-path="satCompleted">
+              ${(() => { const s = tickState(state.satCompleted); return `<button class="line-check-btn sat-merged-check${s.btnClass}" aria-pressed="${s.ariaPressed}" title="Mark complete">${s.label}</button>`; })()}
+              <div class="cell-inner" data-path="satMerged" contenteditable="true">${escMultiline(state.satMerged)}</div>
+            </td>
+            ${satPrepCell(state.satName, state.satNameCompleted)}
+          </tr>
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderPersonalTasks(){
+    const list = document.getElementById("personalTaskList");
+    if (!list) return;
+    list.innerHTML = state.personalDays.map((d, di) => {
+      const groups = d.groups && d.groups.length ? d.groups : [{ name: "", tasks: [{ text: "", completed: false }] }];
+      return groups.map((g, gi) => {
+        const tasks = g.tasks && g.tasks.length ? g.tasks : [{ text: "", completed: false }];
+        const linesHtml = tasks.map((t, ti) => {
+          const s = tickState(t.completed);
+          return `
+            <div class="prep-line-wrap${s.wrapClass}">
+              <button class="line-check-btn${s.btnClass}" data-pday="${di}" data-pgroup="${gi}" data-ptask="${ti}" aria-pressed="${s.ariaPressed}" title="Mark complete">${s.label}</button>
+              <div class="prep-line${s.wrapClass ? s.wrapClass : ""}" data-pday="${di}" data-pgroup="${gi}" data-ptask="${ti}" contenteditable="true">${esc(t.text || "")}</div>
+              <div class="prep-line-btns">
+                <button class="prep-add-btn" data-pday="${di}" data-pgroup="${gi}" data-ptask="${ti}" title="Add task below">+</button>
+                <button class="prep-remove-btn" data-pday="${di}" data-pgroup="${gi}" data-ptask="${ti}" title="Remove task">×</button>
+              </div>
+            </div>`;
+        }).join("");
+        const allDone = tasks.length >= 1 && tasks.every(t => t.completed === true);
+        const allBlocked = tasks.length >= 1 && tasks.every(t => t.completed === "no");
+        const taskCellClass = tasks.length <= 2 && allDone ? " single-line-completed" : tasks.length <= 2 && allBlocked ? " single-line-blocked" : "";
+        const nameCellClass = allDone ? " single-line-completed" : allBlocked ? " single-line-blocked" : "";
+        const dayCell = gi === 0
+          ? `<td class="day-cell" rowspan="${groups.length}" data-ppath="personalDays.${di}.day" contenteditable="true">${escMultiline(d.day || "")}</td>`
+          : "";
+        const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const todayName = dayNames[new Date().getDay()];
+        const isToday = d.day.trim() === todayName;
+        const isPrevToday = di > 0 && state.personalDays[di - 1].day.trim() === todayName;
+        const isFirst = gi === 0;
+        const isLast = gi === groups.length - 1;
+        const todayClasses = isToday
+          ? ` today-side${isFirst ? " today-top" : ""}${isLast ? " today-bottom" : ""}`
+          : (isPrevToday && isFirst ? " today-after" : "");
+        return `
+          <tr class="task-item${gi === 0 ? " group-first" : ""}${todayClasses}" data-pday="${di}" data-pgroup="${gi}">
+            ${dayCell}
+            <td class="data-cell name-group-cell${nameCellClass}">
+              <div class="name-group-wrap">
+                <div class="name-group-text" data-pday="${di}" data-pgroup="${gi}" contenteditable="true">${esc(g.name || "")}</div>
+                <div class="prep-line-btns">
+                  <button class="group-add-btn" data-pday="${di}" data-pgroup="${gi}" title="Add task name below">+</button>
+                  <button class="group-remove-btn" data-pday="${di}" data-pgroup="${gi}" title="Remove this task name and its tasks">×</button>
+                </div>
+              </div>
+            </td>
+            <td class="data-cell prep-cell${taskCellClass}" data-pday="${di}" data-pgroup="${gi}">${linesHtml}</td>
+          </tr>`;
+      }).join("");
+    }).join("");
+  }
+
+  function resetCompleted(){
+    state.rows.forEach(r => { r.completed = emptyChecks(); });
+    state.satCompleted = false;
+    state.satNameCompleted = [];
+    state.personalDays.forEach(d => {
+      (d.groups || []).forEach(g => {
+        (g.tasks || []).forEach(t => { t.completed = false; });
+      });
+    });
+    render();
+    renderPersonalTasks();
+    scheduleSave();
+  }
+
+  function placeCaret(node, pos){
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.setStart(node, pos);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function tryAutoArrow(el){
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) return;
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE || !el.contains(node)) return;
+
+    const offset = range.startOffset;
+    const text = node.textContent;
+    const before = text.slice(0, offset);
+
+    let match = before.match(/-{2,}>$/);
+    if (match){
+      const start = offset - match[0].length;
+      node.textContent = text.slice(0, start) + "→" + text.slice(offset);
+      placeCaret(node, start + 1);
+      return;
+    }
+
+    match = before.match(/<-{2,}$/);
+    if (match){
+      const start = offset - match[0].length;
+      node.textContent = text.slice(0, start) + "←" + text.slice(offset);
+      placeCaret(node, start + 1);
+    }
+  }
+
+  function normalizeArrowsText(s){
+    if (typeof s !== "string") return s;
+    return s.replace(/<-{1,}/g, "←").replace(/-{1,}>/g, "→");
+  }
+
+  function normalizeStateArrows(){
+    state.headers = state.headers.map(normalizeArrowsText);
+    state.vertical = normalizeArrowsText(state.vertical);
+    state.rows.forEach(r => {
+      r.distant = normalizeArrowsText(r.distant);
+      r.recent = normalizeArrowsText(r.recent);
+      r.newly = normalizeArrowsText(r.newly);
+      r.prep = normalizeArrowsText(r.prep);
+    });
+    state.satMerged = normalizeArrowsText(state.satMerged);
+    state.satName = normalizeArrowsText(state.satName);
+    state.personalDays.forEach(d => {
+      d.day = normalizeArrowsText(d.day);
+      (d.groups || []).forEach(g => {
+        g.name = normalizeArrowsText(g.name || "");
+        (g.tasks || []).forEach(t => {
+          t.text = normalizeArrowsText(t.text || "");
+        });
+      });
+    });
+  }
+
+  // Strip formatting on paste for the Saturday merged cell
+  document.addEventListener("paste", e => {
+    const el = e.target.closest("td.sat-merged [contenteditable]");
+    if (!el) return;
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  });
+
+  // Double-click a column header to clear that column
+  document.addEventListener("dblclick", e => {
+    const th = e.target.closest("th[data-clear-field]");
+    if (!th) return;
+    const field = th.dataset.clearField;
+    const isMainTable = th.closest("table.schedule");
+    if (isMainTable){
+      e.preventDefault();
+      window.getSelection().removeAllRanges();
+      const labels = { day: "Day", distant: "Distant past", recent: "Recent past", newly: "Newly memorised", prep: "Weekly preparation" };
+      if (confirm(`Clear the "${labels[field] || field}" column for all days?`)){
+        if (field === "day"){
+          state.rows.forEach(r => { r.day = ""; });
+        } else {
+          state.rows.forEach(r => {
+            r[field] = "";
+            r.completed[field] = [];
+          });
+          if (field === "prep"){
+            state.satName = "";
+            state.satNameCompleted = [];
+          }
+        }
+        render();
+        scheduleSave();
+      }
+      return;
+    }
+    const labels = { day: "Day", name: "Task Name", text: "Task" };
+    if (confirm(`Clear the "${labels[field]}" column for all days?`)){
+      if (field === "day"){
+        state.personalDays.forEach(d => { d.day = ""; });
+      } else if (field === "name"){
+        state.personalDays.forEach(d => {
+          d.groups.forEach(g => { g.name = ""; });
+        });
+      } else {
+        state.personalDays.forEach(d => {
+          d.groups.forEach(g => {
+            g.tasks.forEach(t => { t.text = ""; });
+          });
+        });
+      }
+      renderPersonalTasks();
+      scheduleSave();
+    }
+  });
+
+  // Multi-line support: Enter inserts a line break instead of leaving the field or growing a new block
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.isContentEditable){
+      e.preventDefault();
+      document.execCommand("insertLineBreak");
+    }
+    if (e.key === "ArrowDown" && e.target.isContentEditable){
+      const el = e.target;
+      // If inside a prep-line, first try the next prep-line in the same cell
+      const prepLine = el.closest(".prep-line");
+      if (prepLine){
+        const cell = prepLine.closest("td");
+        const allLines = cell ? Array.from(cell.querySelectorAll(".prep-line")) : [];
+        const idx = allLines.indexOf(prepLine);
+        if (idx !== -1 && idx < allLines.length - 1){
+          e.preventDefault();
+          allLines[idx + 1].focus();
+          placeCaret(allLines[idx + 1], allLines[idx + 1].innerText.length);
+          return;
+        }
+      }
+      // Otherwise move to same column in next row
+      const td = el.closest("td");
+      const tr = el.closest("tr");
+      if (!td || !tr) return;
+      const tds = Array.from(tr.querySelectorAll("td"));
+      const colIndex = tds.indexOf(td);
+      if (colIndex === -1) return;
+      const nextTr = tr.nextElementSibling;
+      if (!nextTr) return;
+      const nextTds = Array.from(nextTr.querySelectorAll("td"));
+      const targetTd = nextTds[Math.min(colIndex, nextTds.length - 1)];
+      if (!targetTd) return;
+      const focusable = targetTd.querySelector(".prep-line, [contenteditable='true']");
+      if (focusable){
+        e.preventDefault();
+        focusable.focus();
+        placeCaret(focusable, focusable.innerText.length);
+      }
+    }
+  });
+
+  // Text edits
+  document.addEventListener("input", e => {
+    const el = e.target;
+    if (el.isContentEditable){
+      tryAutoArrow(el);
+    }
+    if (el.matches && el.matches(".prep-line[data-row][data-field]")){
+      const ri = parseInt(el.dataset.row);
+      const field = el.dataset.field;
+      const cell = el.closest(".prep-cell");
+      const lines = Array.from(cell.querySelectorAll(".prep-line[data-row]")).map(d => d.innerText);
+      state.rows[ri][field] = lines.join("\n");
+      scheduleSave();
+    } else if (el.matches && el.matches(".prep-line[data-satline]")){
+      const cell = el.closest(".sat-prep-cell");
+      const lines = Array.from(cell.querySelectorAll(".prep-line[data-satline]")).map(d => d.innerText);
+      state.satName = lines.join("\n");
+      scheduleSave();
+    } else if (el.matches && el.matches("[contenteditable='true'][data-path]")){
+      setPath(state, el.dataset.path, el.innerText);
+      scheduleSave();
+    } else if (el.matches && el.matches(".prep-line[data-pday]")){
+      const di = parseInt(el.dataset.pday);
+      const gi = parseInt(el.dataset.pgroup);
+      const ti = parseInt(el.dataset.ptask);
+      if (state.personalDays[di] && state.personalDays[di].groups[gi] && state.personalDays[di].groups[gi].tasks[ti]){
+        state.personalDays[di].groups[gi].tasks[ti].text = el.innerText;
+        scheduleSave();
+      }
+    } else if (el.matches && el.matches(".name-group-text[data-pday]")){
+      const di = parseInt(el.dataset.pday);
+      const gi = parseInt(el.dataset.pgroup);
+      if (state.personalDays[di] && state.personalDays[di].groups[gi]){
+        state.personalDays[di].groups[gi].name = el.innerText;
+        scheduleSave();
+      }
+    } else if (el.matches && el.matches("[contenteditable='true'][data-ppath]")){
+      setPath(state, el.dataset.ppath, el.innerText);
+      scheduleSave();
+    }
+  });
+
+  // Add / remove personal tasks, tap the checkmark to complete, reset all completions
+  document.addEventListener("click", e => {
+    // Circle tick button: Saturday merged cell
+    if (e.target.classList.contains("sat-merged-check")){
+      state.satCompleted = nextTick(state.satCompleted);
+      render();
+      scheduleSave();
+      return;
+    }
+    // Circle tick button: toggle line complete (weekly rows)
+    if (e.target.classList.contains("line-check-btn") && e.target.dataset.row !== undefined){
+      const ri = parseInt(e.target.dataset.row);
+      const field = e.target.dataset.field;
+      const li = parseInt(e.target.dataset.line);
+      if (!Array.isArray(state.rows[ri].completed[field])) state.rows[ri].completed[field] = [];
+      state.rows[ri].completed[field][li] = nextTick(state.rows[ri].completed[field][li]);
+      render();
+      scheduleSave();
+      return;
+    }
+    // Circle tick button: toggle line complete (sat prep)
+    if (e.target.classList.contains("line-check-btn") && e.target.dataset.satline !== undefined){
+      const li = parseInt(e.target.dataset.satline);
+      if (!Array.isArray(state.satNameCompleted)) state.satNameCompleted = [];
+      state.satNameCompleted[li] = nextTick(state.satNameCompleted[li]);
+      render();
+      scheduleSave();
+      return;
+    }
+    // Circle tick button: toggle complete (personal tasks)
+    if (e.target.classList.contains("line-check-btn") && e.target.dataset.pday !== undefined){
+      const di = parseInt(e.target.dataset.pday);
+      const gi = parseInt(e.target.dataset.pgroup);
+      const ti = parseInt(e.target.dataset.ptask);
+      const task = state.personalDays[di] && state.personalDays[di].groups[gi] && state.personalDays[di].groups[gi].tasks[ti];
+      if (task){
+        task.completed = nextTick(task.completed);
+        renderPersonalTasks();
+        scheduleSave();
+      }
+      return;
+    }
+    // Personal tasks: add a new task-name group below
+    if (e.target.classList.contains("group-add-btn")){
+      const di = parseInt(e.target.dataset.pday);
+      const gi = parseInt(e.target.dataset.pgroup);
+      state.personalDays[di].groups.splice(gi + 1, 0, { name: "", tasks: [{ text: "", completed: false }] });
+      renderPersonalTasks();
+      scheduleSave();
+      requestAnimationFrame(() => {
+        const cell = document.querySelector(`.name-group-text[data-pday="${di}"][data-pgroup="${gi + 1}"]`);
+        if (cell) cell.focus();
+      });
+      return;
+    }
+    // Personal tasks: remove a task-name group
+    if (e.target.classList.contains("group-remove-btn")){
+      const di = parseInt(e.target.dataset.pday);
+      const gi = parseInt(e.target.dataset.pgroup);
+      if (state.personalDays[di].groups.length <= 1){
+        state.personalDays[di].groups[0] = { name: "", tasks: [{ text: "", completed: false }] };
+      } else {
+        state.personalDays[di].groups.splice(gi, 1);
+      }
+      renderPersonalTasks();
+      scheduleSave();
+      return;
+    }
+    // Prep row: add line below (weekly schedule rows or personal tasks)
+    if (e.target.classList.contains("prep-add-btn")){
+      if (e.target.dataset.pday !== undefined){
+        const di = parseInt(e.target.dataset.pday);
+        const gi = parseInt(e.target.dataset.pgroup);
+        const ti = parseInt(e.target.dataset.ptask);
+        state.personalDays[di].groups[gi].tasks.splice(ti + 1, 0, { text: "", completed: false });
+        renderPersonalTasks();
+        scheduleSave();
+        const cell = document.querySelector(`.prep-cell[data-pday="${di}"][data-pgroup="${gi}"]`);
+        if (cell) { const newLine = cell.querySelectorAll(".prep-line")[ti + 1]; if (newLine) newLine.focus(); }
+        return;
+      }
+      const ri = parseInt(e.target.dataset.row);
+      const field = e.target.dataset.field;
+      const li = parseInt(e.target.dataset.line);
+      const lines = state.rows[ri][field].split("\n");
+      lines.splice(li + 1, 0, "");
+      state.rows[ri][field] = lines.join("\n");
+      if (!Array.isArray(state.rows[ri].completed[field])) state.rows[ri].completed[field] = [];
+      state.rows[ri].completed[field].splice(li + 1, 0, false);
+      render();
+      scheduleSave();
+      // focus new line
+      const cell = document.querySelector(`.prep-cell[data-row="${ri}"][data-field="${field}"]`);
+      if (cell) { const newLine = cell.querySelectorAll(".prep-line")[li + 1]; if (newLine) newLine.focus(); }
+      return;
+    }
+    // Prep row: remove line (weekly schedule rows or personal tasks)
+    if (e.target.classList.contains("prep-remove-btn")){
+      if (e.target.dataset.pday !== undefined){
+        const di = parseInt(e.target.dataset.pday);
+        const gi = parseInt(e.target.dataset.pgroup);
+        const ti = parseInt(e.target.dataset.ptask);
+        const tasks = state.personalDays[di].groups[gi].tasks;
+        if (tasks.length <= 1){
+          tasks[0] = { text: "", completed: false };
+        } else {
+          tasks.splice(ti, 1);
+        }
+        renderPersonalTasks();
+        scheduleSave();
+        return;
+      }
+      const ri = parseInt(e.target.dataset.row);
+      const field = e.target.dataset.field;
+      const li = parseInt(e.target.dataset.line);
+      const lines = state.rows[ri][field].split("\n");
+      if (lines.length <= 1){ lines[0] = ""; } else { lines.splice(li, 1); }
+      state.rows[ri][field] = lines.join("\n");
+      if (!Array.isArray(state.rows[ri].completed[field])) state.rows[ri].completed[field] = [];
+      state.rows[ri].completed[field].splice(li, 1);
+      render();
+      scheduleSave();
+      return;
+    }
+    // Sat prep: add line below
+    if (e.target.classList.contains("sat-prep-add-btn")){
+      const li = parseInt(e.target.dataset.satline);
+      const lines = state.satName.split("\n");
+      lines.splice(li + 1, 0, "");
+      state.satName = lines.join("\n");
+      if (!Array.isArray(state.satNameCompleted)) state.satNameCompleted = [];
+      state.satNameCompleted.splice(li + 1, 0, false);
+      render();
+      scheduleSave();
+      const cell = document.querySelector(".sat-prep-cell");
+      if (cell) { const newLine = cell.querySelectorAll(".prep-line")[li + 1]; if (newLine) newLine.focus(); }
+      return;
+    }
+    // Sat prep: remove line
+    if (e.target.classList.contains("sat-prep-remove-btn")){
+      const li = parseInt(e.target.dataset.satline);
+      const lines = state.satName.split("\n");
+      if (lines.length <= 1){ lines[0] = ""; } else { lines.splice(li, 1); }
+      state.satName = lines.join("\n");
+      if (!Array.isArray(state.satNameCompleted)) state.satNameCompleted = [];
+      state.satNameCompleted.splice(li, 1);
+      render();
+      scheduleSave();
+      return;
+    }
+    if (e.target.id === "resetBtn"){
+      if (confirm("Reset all completed task marks? Your text won't be changed.")){
+        resetCompleted();
+      }
+    }
+  });
+
+  let saveTimeout;
+  function scheduleSave(){
+    hint.textContent = "Saving…";
+    hint.classList.remove("saved");
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(async () => {
+      try {
+        isSaving = true;
+        await storageSet(STORAGE_KEY, JSON.stringify(state));
+        hint.textContent = "Saved";
+        hint.classList.add("saved");
+        setTimeout(() => {
+          hint.textContent = "Tap to edit, Enter for a new line · tap the circle to mark it done";
+          hint.classList.remove("saved");
+          isSaving = false;
+        }, 1200);
+      } catch (e) {
+        isSaving = false;
+        hint.textContent = "Could not save — your edits stay on screen for now";
+      }
+    }, 500);
+  }
+
+  function applySnapshot(snap){
+    if (isSaving) return; // ignore remote updates while we're mid-save
+    try {
+      if (snap.exists){
+        const loaded = JSON.parse(snap.data().value);
+        state = Object.assign({}, defaultState, loaded);
+        if (!Array.isArray(state.personalDays) || state.personalDays.length === 0){
+          state.personalDays = JSON.parse(JSON.stringify(defaultState.personalDays));
+        }
+        state.personalDays.forEach(d => {
+          // Migrate from "items" format (one name + one task per row)
+          if (Array.isArray(d.items)){
+            d.name = d.items.map(it => it.name || "").filter(Boolean).join("\n");
+            d.tasks = d.items.map(it => ({ text: it.task || "", completed: !!it.completed }));
+            delete d.items;
+          }
+          // Migrate from older multi-line name/text + completed-array format
+          if (!Array.isArray(d.tasks) && !Array.isArray(d.groups)){
+            if (typeof d.text === "string"){
+              const taskLines = d.text.split("\n");
+              d.tasks = taskLines.map((line, i) => ({
+                text: line,
+                completed: !!(d.textCompleted && d.textCompleted[i])
+              }));
+              delete d.text; delete d.textCompleted; delete d.nameCompleted;
+            } else if (!Array.isArray(d.tasks)) {
+              d.tasks = [{ text: "", completed: false }];
+            }
+          }
+          // Migrate single name + tasks array (previous version) into groups
+          if (!Array.isArray(d.groups)){
+            d.groups = [{ name: d.name || "", tasks: Array.isArray(d.tasks) ? d.tasks : [{ text: "", completed: false }] }];
+            delete d.name;
+            delete d.tasks;
+          }
+          if (d.groups.length === 0) d.groups = [{ name: "", tasks: [{ text: "", completed: false }] }];
+          d.groups.forEach(g => {
+            if (typeof g.name !== "string") g.name = "";
+            if (!Array.isArray(g.tasks) || g.tasks.length === 0) g.tasks = [{ text: "", completed: false }];
+            g.tasks.forEach(t => {
+              if (typeof t.text !== "string") t.text = "";
+              t.completed = !!t.completed;
+            });
+          });
+        });
+      }
+    } catch (e) {
+      // no saved data yet, keep defaults
+    }
+    normalizeStateArrows();
+    state.rows.forEach(r => {
+      if (r.newly === undefined){
+        r.newly = [r.newlyMain, r.newlySub].filter(Boolean).join("\n");
+        delete r.newlyMain;
+        delete r.newlySub;
+      }
+      if (r.recent === undefined){
+        r.recent = [r.recentMain, r.recentSub].filter(Boolean).join("\n");
+        delete r.recentMain;
+        delete r.recentSub;
+      }
+    });
+    if (state.satName === undefined){
+      state.satName = state.satNameValue || state.satNameLabel || "The name :";
+      delete state.satNameLabel;
+      delete state.satNameValue;
+    }
+    if (state.satNameCompleted === undefined || !Array.isArray(state.satNameCompleted)) state.satNameCompleted = [];
+    // Migrate old boolean completed fields to arrays
+    state.rows.forEach(r => {
+      ["distant", "recent", "newly", "prep"].forEach(field => {
+        if (!Array.isArray(r.completed[field])) r.completed[field] = [];
+      });
+    });
+    render();
+    renderPersonalTasks();
+  }
+
+  db.collection("schedules").doc(STORAGE_KEY).onSnapshot(applySnapshot, e => {
+    console.error("Firestore listen error", e);
+  });
+
+  // Show the "read tomorrow's hifdh" reminder only Saturday–Wednesday nights
+  (function updateFooterNoteVisibility(){
+    const note = document.getElementById("footerNote");
+    if (!note) return;
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sun, 6 = Sat
+    const hour = now.getHours();
+    const isNight = hour >= 18 || hour < 4; // treat evening/night as 6pm–4am
+    const isRelevantDay = [6, 0, 1, 2, 3].includes(day); // Sat, Sun, Mon, Tue, Wed
+    note.style.display = (isNight && isRelevantDay) ? "block" : "none";
+  })();
+</script>
+</body>
+</html>
